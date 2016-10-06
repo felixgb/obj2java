@@ -1,59 +1,40 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Control.Applicative
+import Parser
+import Data.List
+import System.Environment
+import Data.Aeson
 
-import Text.Parsec
-import Text.Parsec.Language
+main :: IO ()
+main = do
+    path <- fmap head getArgs
+    inp <- readFile path
+    let obj = parseObj inp
+    print $ encode obj
+-- 
+-- writeObj :: Obj -> String
+-- writeObj obj = "class Head {\n" ++ (writeVertices (vertices obj)) ++ (writeFaceIdxs (faces obj)) ++ "}"
 
-import qualified Text.Parsec.Token as Tok
+-- writeVertex :: Vertex -> String
+-- writeVertex (x, y, z, w) = "[" ++ (intercalate ", " $ map (\x -> (show x ++ "f")) [x, y, z, w]) ++ "]"
 
-type Vertex = (Double, Double, Double, Double)
+-- writeVertices vs = "float vert[] = {\n" ++ inner ++ "};\n"
+--     where inner = intercalate ", " (map (\f -> show f ++ "f\n") (concatMap (\(a, b, c, d) -> [a, b, c, d]) vs))
+-- 
+-- writeFaceIdxs fs = "short faces[] = {\n" ++ inner ++ "};\n"
+--     where inner = intercalate ", " (map (\f -> show f ++ "\n") (concatMap (\((a, _, _), (b, _, _), (c, _, _)) -> [a, b, c]) fs))
+-- 
 
-type TextureCoord = (Double, Double, Double)
+instance ToJSON Obj where
+    toJSON o = object 
+        [ "verts" .= (vertsToList $ vertices o)
+        , "faces" .= (faceToList $ faces o)
+        ]
 
-type VertexNormal = (Double, Double, Double)
+faceToList :: [Face] -> [Integer]
+faceToList = concatMap (\((a, _, _), (b, _, _), (c, _, _)) -> [a, b, c])
 
-type Vtn = (Double, Maybe Double, Maybe Double)
-
-type Face = (Maybe Vtn, Maybe Vtn, Maybe Vtn)
-
-data Obj = Obj
-    { vertices = [Vertex]
-    , textCoords = [TextureCoord]
-    , vertexNormal = [VertexNormal]
-    , textCoords = [Face]
-    }
-
-type ObjParsec a = Parsec String [Obj] a
-
-lexer = Tok.makeTokenParser style
-    where
-        ops = ["/"]
-        names = []
-        style = emptyDef 
-        { Tok.commentStart = "#"
-        , Tok.reservedNames = names
-        , Tok.reservedOpNames = ops
-        }
-
-reservedOp = Tok.reservedOp lexer
-
-double = Tok.double lexer
-
-whiteSpace = Tok.whiteSpace lexer
-
-vertex :: ObjParser
-vertex = do
-    reserved "f"
-    x <- double
-    y <- double
-    z <- double
-    z <- optionMaybe :w
-
-    return $ 
-
-document p = od
-    whiteSpace
-    r <- p
-    eof
-    return r
+vertsToList :: [Vertex] -> [Double]
+vertsToList = concatMap (\(x, y, z, w) -> [x, y, z, w])
